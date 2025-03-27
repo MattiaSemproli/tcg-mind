@@ -2,6 +2,7 @@ import type { NextAuthOptions } from 'next-auth'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { GithubProfile } from 'next-auth/providers/github'
+import { db } from '@/utils/db'
 
 export const options: NextAuthOptions = {
     providers: [
@@ -32,16 +33,21 @@ export const options: NextAuthOptions = {
                 }
             },
             async authorize(credentials) {
-                // This is where you need to retrieve user data
-                // to verify with credentials
-                // Docs: https://next-auth.js.org/configuration/providers/credentials
-                const user = { id: '51', name: 'sempro', password: 'password', role: "admin" }
-
-                if (credentials?.username === user.name && credentials?.password === user.password) {
-                    return user
-                } else {
+                if (!credentials?.username || !credentials?.password) {
                     return null
                 }
+
+                const user = await db.user.findUnique({
+                    where: {
+                        username: credentials?.username
+                    }
+                })
+
+                if (!user || user.password !== credentials.password) {
+                    return null
+                }
+
+                return user
             }
         })
     ],

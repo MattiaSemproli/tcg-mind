@@ -1,21 +1,20 @@
 import type { NextAuthOptions } from 'next-auth'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { GithubProfile } from 'next-auth/providers/github'
-import { db } from '@/utils/db'
+import { db } from '@/lib/db'
+import { PrismaAdapter } from '@next-auth/prisma-adapter'
+import { compare } from 'bcrypt'
 
 export const options: NextAuthOptions = {
+    adapter: PrismaAdapter(db),
+    session: {
+        strategy: "jwt"
+    },
+    pages: {
+        signIn: '/sign-in',
+    },
     providers: [
         GitHubProvider({
-            profile(profile: GithubProfile) {
-                //console.log(profile)
-                return {
-                    ...profile,
-                    role: profile.role ?? "user",
-                    id: profile.id.toString(),
-                    image: profile.avatar_url,
-                }
-            },
             clientId: process.env.GITHUB_ID as string,
             clientSecret: process.env.GITHUB_SECRET as string,
         }),
@@ -42,25 +41,41 @@ export const options: NextAuthOptions = {
                         username: credentials?.username
                     }
                 })
-
-                if (!user || user.password !== credentials.password) {
+                if (!user) {
                     return null
                 }
 
-                return user
+                const passwordMatch = await compare(credentials.password, user.password)
+                if (!passwordMatch) {
+                    return null
+                }
+
+                return {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                }
             }
         })
     ],
     callbacks: {
-        // Ref: https://authjs.dev/guides/basics/role-based-access-control#persisting-the-role
         async jwt({ token, user }) {
-            if (user) token.role = user.role
+            if (user) {
+                return {
+                    ...token,
+                    username: user.username,
+                }
+            }
             return token
         },
-        // If you want to use the role in client components
         async session({ session, token }) {
-            if (session?.user) session.user.role = token.role
-            return session
-        },
+            return {
+                ...session,
+                user: {
+                    ...session.user,
+                    username: token.username,
+                }
+            }
+        }
     }
 }

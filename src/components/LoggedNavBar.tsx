@@ -5,7 +5,7 @@ import { Button } from "./ui/button"
 
 export default function LoggedNavBar() {
     return (
-        <Button onClick={() => signOut}>
+        <Button onClick={() => signOut()}>
             Sign Out
         </Button>
     )

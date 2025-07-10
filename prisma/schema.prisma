@@ -15,6 +15,37 @@ model User {
   email         String    @unique
   username      String    @unique
   password      String
+  tournaments   Tournament[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model Deck {
+  id          Int      @id @default(autoincrement())
+  name        String
+  tournaments Tournament[] @relation("DeckPlayed")
+}
+
+model Tournament {
+  id          Int         @id @default(autoincrement())
+  name        String
+  location    String
+  result      String
+  deckPlayedId Int
+  deckPlayed  Deck        @relation("DeckPlayed", fields: [deckPlayedId], references: [id])
+  type        String
+  nRound      Int
+  tDate       DateTime
+  gameReports GameReport[]
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+}
+
+model GameReport {
+  id            Int      @id @default(autoincrement())
+  opponent      String
+  opponentDeck  String
+  notes         String?
+  tournamentId  Int
+  tournament    Tournament @relation(fields: [tournamentId], references: [id])
 }
